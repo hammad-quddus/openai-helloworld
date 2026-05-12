@@ -64,15 +64,12 @@ public class HelloworldApplication {
 					4. Transcribe the student answers
 					5. Compare against solutions
 					6. Assign marks out of 10
-					7. Extract supporting evidence from the student's answer
 
 					Rules:
 					- Never invent student answers
 					- If handwriting is unreadable, explicitly say so
 					- Base grading on the supplied rubric
 					- Be strict but fair
-					- Evidence excerpts must be copied directly from the student's answer
-					- Keep evidence excerpts concise
 					- Return ONLY valid JSON
 					- Do not return markdown
 					- Do not wrap JSON in triple backticks
@@ -132,13 +129,6 @@ public class HelloworldApplication {
 					 			},
 					 	        "descriptor": string
 					 	      },
-
-					 	      "evidence": [
-					   {
-					      "point": string,
-					      "studentExcerpt": string
-					   }
-					  ]
 
 					 	      "confidence": {
 					 			"transcriptionConfidence": number,

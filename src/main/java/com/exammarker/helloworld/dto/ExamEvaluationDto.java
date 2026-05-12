@@ -29,8 +29,8 @@ public record ExamEvaluationDto(
 
     ConfidenceDto confidence,
 
-    Boolean requiresHumanReview,
+    Boolean requiresHumanReview
 
-    List<EvidenceDto> evidence
+//    List<EvidenceDto> evidence
 
 ) {}
