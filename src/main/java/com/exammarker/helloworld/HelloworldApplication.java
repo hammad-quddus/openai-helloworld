@@ -2,6 +2,7 @@ package com.exammarker.helloworld;
 
 import java.util.List;
 
+import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -38,36 +39,76 @@ public class HelloworldApplication {
 	
 	@Bean
 	CommandLineRunner gradeExam(OpenAiChatModel chatModel) {
+
 	    return args -> {
-	        Resource studentWork = new FileSystemResource("/Users/hammadquddus/Downloads/upload-unmarked-papers.pdf");
-	        Resource text_reading = new FileSystemResource("/Users/hammadquddus/Downloads/upload-exam-solutions.pdf");
-	        Resource rubric = new FileSystemResource("/Users/hammadquddus/Downloads/upload-level-descriptor.pdf");
-	        
-	        var systemMessage = UserMessage.builder()
-	        		.text("You are an experienced 9th-grade Islamic studies teacher. "
-	        				+ "Use the provided 'Level Descriptor' to determine the grade (marks out of 10).\n"
-	        				+ "Use the provided 'Exam Solution / reference reading' as the source of factual truth.")	        				
-	        		.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), rubric))     // upload-level-descriptor.pdf [cite: 110]
-	        	    .media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), text_reading))    // upload-exam-solutions.pdf [cite: 68]
-	        		.build();
 
-	        var userMessage = UserMessage.builder()
-	        		.text("Please grade the attached exam for the student.")
-	        	    .text("1. Transcribe the handwritten text from the student's paper page by page.")
-	        	    .text("2. Provide a brief assessment of the student's clarity and factual accuracy.")
-	        	    .text("3. Format the output as a clean Markdown report based on the content found.")	        	    .media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), studentWork))
-	        		.build();
+	        Resource studentWork =
+	                new FileSystemResource("/Users/hammadquddus/Downloads/upload-unmarked-papers.pdf");
 
+	        Resource solutions =
+	                new FileSystemResource("/Users/hammadquddus/Downloads/upload-exam-solutions.pdf");
 
-	        Prompt prompt = new Prompt(List.of(systemMessage, userMessage));
+	        Resource rubric =
+	                new FileSystemResource("/Users/hammadquddus/Downloads/upload-level-descriptor.pdf");
+
+	        SystemMessage systemMessage = new SystemMessage("""
+	            You are an experienced 9th-grade Islamic Studies teacher.
+
+	            Read ALL attached files carefully.
+
+	            Tasks:
+	            1. Read the rubric
+	            2. Read the exam solutions
+	            3. Read the student's handwritten paper
+	            4. Transcribe the student answers
+	            5. Compare against solutions
+	            6. Assign marks out of 10
+
+	            Never invent student answers.
+	            If handwriting is unreadable, say so.
+	            """);
+
+	        UserMessage rubricMessage = UserMessage.builder()
+	                .text("This is the grading rubric.")
+	                .media(new Media(
+	                        MimeTypeUtils.parseMimeType("application/pdf"),
+	                        rubric))
+	                .build();
+
+	        UserMessage solutionsMessage = UserMessage.builder()
+	                .text("These are the official exam solutions.")
+	                .media(new Media(
+	                        MimeTypeUtils.parseMimeType("application/pdf"),
+	                        solutions))
+	                .build();
+
+	        UserMessage studentMessage = UserMessage.builder()
+	                .text("""
+	                    This is the student's handwritten exam paper.
+
+	                    Please:
+	                    - transcribe answers
+	                    - assess accuracy
+	                    - assign marks
+	                    - generate markdown report
+	                    """)
+	                .media(new Media(
+	                        MimeTypeUtils.parseMimeType("application/pdf"),
+	                        studentWork))
+	                .build();
+
+	        Prompt prompt = new Prompt(List.of(
+	                systemMessage,
+	                rubricMessage,
+	                solutionsMessage,
+	                studentMessage
+	        ));
+
 	        ChatResponse response = chatModel.call(prompt);
-	        String report = response.getResult().getOutput().getText();
-	                                 
-	        
-	        System.out.println("--- Student Exam Report ---\n" + report);
+
+	        System.out.println(response.getResult().getOutput().getText());
 	    };
-	}	
-	
+	}
 }
 
 ///Users/hammadquddus/Downloads/upload-unmarked-papers.pdf
