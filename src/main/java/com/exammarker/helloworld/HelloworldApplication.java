@@ -2,6 +2,7 @@ package com.exammarker.helloworld;
 
 import java.util.List;
 
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -16,14 +17,18 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.util.MimeTypeUtils;
 
+import com.exammarker.helloworld.dto.ExamEvaluationDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 @SpringBootApplication
 public class HelloworldApplication {
+
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	public static void main(String[] args) {
 		SpringApplication.run(HelloworldApplication.class, args);
 	}
 
-	
 //	@Bean
 //    CommandLineRunner runner(OpenAiChatModel chatModel) {
 //        return args -> {
@@ -35,161 +40,149 @@ public class HelloworldApplication {
 //            System.out.println("OpenAI says: " + response);
 //        };
 //    }
-	
+
 	@Bean
 	CommandLineRunner gradeExam(OpenAiChatModel chatModel) {
 
-	    return args -> {
+		return args -> {
 
-	        Resource studentWork =
-	                new FileSystemResource("/Users/hammadquddus/Downloads/upload-unmarked-papers.pdf");
+			Resource studentWork = new FileSystemResource("/Users/hammadquddus/Downloads/upload-unmarked-papers.pdf");
 
-	        Resource solutions =
-	                new FileSystemResource("/Users/hammadquddus/Downloads/upload-exam-solutions.pdf");
+			Resource solutions = new FileSystemResource("/Users/hammadquddus/Downloads/upload-exam-solutions.pdf");
 
-	        Resource rubric =
-	                new FileSystemResource("/Users/hammadquddus/Downloads/upload-level-descriptor.pdf");
+			Resource rubric = new FileSystemResource("/Users/hammadquddus/Downloads/upload-level-descriptor.pdf");
 
-	        SystemMessage systemMessage = new SystemMessage("""
-	        	    You are an experienced 9th-grade Islamic Studies teacher.
+			SystemMessage systemMessage = new SystemMessage("""
+					 	    You are an experienced 9th-grade Islamic Studies teacher.
 
-	        	    Read ALL attached files carefully.
+					 	    Read ALL attached files carefully.
 
-				    Tasks:
-				    1. Read the rubric
-				    2. Read the exam solutions
-				    3. Read the student's handwritten paper
-				    4. Transcribe the student answers
-				    5. Compare against solutions
-				    6. Assign marks out of 10
-				    7. Extract supporting evidence from the student's answer
-				
-				    Rules:
-				    - Never invent student answers
-				    - If handwriting is unreadable, explicitly say so
-				    - Base grading on the supplied rubric
-				    - Be strict but fair
-				    - Evidence excerpts must be copied directly from the student's answer
-				    - Keep evidence excerpts concise
-				    - Return ONLY valid JSON
-				    - Do not return markdown
-				    - Do not wrap JSON in triple backticks
+					Tasks:
+					1. Read the rubric
+					2. Read the exam solutions
+					3. Read the student's handwritten paper
+					4. Transcribe the student answers
+					5. Compare against solutions
+					6. Assign marks out of 10
+					7. Extract supporting evidence from the student's answer
 
-	        	    JSON schema:
+					Rules:
+					- Never invent student answers
+					- If handwriting is unreadable, explicitly say so
+					- Base grading on the supplied rubric
+					- Be strict but fair
+					- Evidence excerpts must be copied directly from the student's answer
+					- Keep evidence excerpts concise
+					- Return ONLY valid JSON
+					- Do not return markdown
+					- Do not wrap JSON in triple backticks
 
-	        	    {
-	        		  "studentName": string | null,
-	        	      "questionNumber": integer | null,
-	        	      "questionText": string,
-	        	      "maxMarks": integer,
-	        	      "marksAwarded": integer,
-	        	      "studentSolutionTranscription": string,
+					 	    JSON schema:
 
-	        	      "officialSolutionKeyPoints": [
-	        	        string
-	        	      ],
+					 	    {
+					 		  "studentName": string | null,
+					 	      "questionNumber": integer | null,
+					 	      "questionText": string,
+					 	      "maxMarks": integer,
+					 	      "marksAwarded": integer,
+					 	      "studentSolutionTranscription": string,
 
-	        	      "evaluation": {
-	        	        "accuracy": [
-	        	          string
-	        	        ],
-	        	        "coverage": [
-	        	          string
-	        	        ],
-	        	        "useOfResources": [
-	        	          string
-	        	        ],
-	        	        "structure": [
-	        	          string
-	        	        ],
-	        	        "relevance": [
-	        	          string
-	        	        ]
-	        	      },
-	        	      "evaluationSummary": string,
+					 	      "officialSolutionKeyPoints": [
+					 	        string
+					 	      ],
 
-	        	      "strengths": [
-	        	        string
-	        	      ],
+					 	      "evaluation": {
+					 	        "accuracy": [
+					 	          string
+					 	        ],
+					 	        "coverage": [
+					 	          string
+					 	        ],
+					 	        "useOfResources": [
+					 	          string
+					 	        ],
+					 	        "structure": [
+					 	          string
+					 	        ],
+					 	        "relevance": [
+					 	          string
+					 	        ]
+					 	      },
+					 	      "evaluationSummary": string,
 
-	        	      "improvements": [
-	        	        string
-	        	      ],
-	        	      "factualErrors": [
-	        	        string
-	        	      ],
-	        	      
-	        	      "teacherComments": [
-	        	        string
-	        	      ],
+					 	      "strengths": [
+					 	        string
+					 	      ],
 
-	        	      "rubricReference": {
-	        	        "band": {
-	        				"min": integer,
-	        				"max": integer
-	        			},
-	        	        "descriptor": string
-	        	      },
-	        	      
-	        	      "evidence": [
-				       {
-				          "point": string,
-				          "studentExcerpt": string
-				       }
-				      ]
+					 	      "improvements": [
+					 	        string
+					 	      ],
+					 	      "factualErrors": [
+					 	        string
+					 	      ],
 
-	        	      "confidence": {
-	        			"transcriptionConfidence": number,
-	        			"gradingConfidence": number
-	        		   },
-	        		   "requiresHumanReview": boolean
-	        	    }
-	        	    """);
+					 	      "teacherComments": [
+					 	        string
+					 	      ],
 
-	        UserMessage rubricMessage = UserMessage.builder()
-	                .text("This is the grading rubric.")
-	                .media(new Media(
-	                        MimeTypeUtils.parseMimeType("application/pdf"),
-	                        rubric))
-	                .build();
+					 	      "rubricReference": {
+					 	        "band": {
+					 				"min": integer,
+					 				"max": integer
+					 			},
+					 	        "descriptor": string
+					 	      },
 
-	        UserMessage solutionsMessage = UserMessage.builder()
-	                .text("These are the official exam solutions.")
-	                .media(new Media(
-	                        MimeTypeUtils.parseMimeType("application/pdf"),
-	                        solutions))
-	                .build();
+					 	      "evidence": [
+					   {
+					      "point": string,
+					      "studentExcerpt": string
+					   }
+					  ]
 
-	        UserMessage studentMessage = UserMessage.builder()
-	                .text("""
-	                    This is the student's handwritten exam paper.
+					 	      "confidence": {
+					 			"transcriptionConfidence": number,
+					 			"gradingConfidence": number
+					 		   },
+					 		   "requiresHumanReview": boolean
+					 	    }
+					 	    """);
 
-	                    Please:
-	                    - transcribe the student's answer carefully
-	                    - identify unclear or unreadable handwriting
-	                    - compare the answer against the supplied marking scheme
-	                    - evaluate the answer using the rubric
-	                    - extract supporting evidence directly from the student's writing
-	                    - assign marks fairly and accurately
-	                    - return ONLY valid JSON matching the required schema
-	                    """)
-	                .media(new Media(
-	                        MimeTypeUtils.parseMimeType("application/pdf"),
-	                        studentWork))
-	                .build();
+			UserMessage rubricMessage = UserMessage.builder().text("This is the grading rubric.")
+					.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), rubric)).build();
 
-	        Prompt prompt = new Prompt(List.of(
-	                systemMessage,
-	                rubricMessage,
-	                solutionsMessage,
-	                studentMessage
-	        ));
+			UserMessage solutionsMessage = UserMessage.builder().text("These are the official exam solutions.")
+					.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), solutions)).build();
 
-	        ChatResponse response = chatModel.call(prompt);
+			UserMessage studentMessage = UserMessage.builder().text("""
+					This is the student's handwritten exam paper.
 
-	        System.out.println(response.getResult().getOutput().getText());
-	    };
+					Please:
+					- transcribe the student's answer carefully
+					- identify unclear or unreadable handwriting
+					- compare the answer against the supplied marking scheme
+					- evaluate the answer using the rubric
+					- extract supporting evidence directly from the student's writing
+					- assign marks fairly and accurately
+					- return ONLY valid JSON matching the required schema
+					""").media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), studentWork)).build();
+
+			Prompt prompt = new Prompt(List.of(systemMessage, rubricMessage, solutionsMessage, studentMessage));
+
+			ChatResponse response = chatModel.call(prompt);
+
+			var raw = response.getResult().getOutput().getText();
+			System.out.println(raw);
+
+			System.out.println("=========================================================");
+
+			// once stable
+			ExamEvaluationDto dto = objectMapper.readValue(raw, ExamEvaluationDto.class);
+			System.out.println(dto);
+
+		};
 	}
+
 }
 
 ///Users/hammadquddus/Downloads/upload-unmarked-papers.pdf

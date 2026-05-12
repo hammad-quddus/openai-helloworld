@@ -6,6 +6,7 @@ import java.util.List;
 // raw output layer
 public record ExamEvaluationDto(
 
+	String studentName,	
     Integer questionNumber,
     String questionText,
 
@@ -17,6 +18,7 @@ public record ExamEvaluationDto(
     List<String> officialSolutionKeyPoints,
 
     EvaluationDto evaluation,
+    String evaluationSummary,
 
     List<String> strengths,
     List<String> improvements,
