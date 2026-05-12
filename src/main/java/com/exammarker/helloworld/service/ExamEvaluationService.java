@@ -2,6 +2,7 @@ package com.exammarker.helloworld.service;
 
 import com.exammarker.helloworld.dto.ExamEvaluationDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -13,10 +14,12 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.content.Media;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ExamEvaluationService {
@@ -28,14 +31,150 @@ public class ExamEvaluationService {
     public ExamEvaluationService(OpenAiChatModel chatModel) {
         this.chatModel = chatModel;
     }
-    public ExamEvaluationDto evaluate(String paperPath, String rubricPath, String officialSolutionPath) throws JsonMappingException, JsonProcessingException {
+//    public ExamEvaluationDto evaluate(String paperPath, String rubricPath, String officialSolutionPath) throws JsonMappingException, JsonProcessingException {
+//
+//
+//		Resource studentWork = new FileSystemResource(paperPath);
+//
+//		Resource solutions = new FileSystemResource(officialSolutionPath);
+//
+//		Resource rubric = new FileSystemResource(rubricPath);
+//
+//		SystemMessage systemMessage = new SystemMessage("""
+//				 	    You are an experienced 9th-grade Islamic Studies teacher.
+//
+//				 	    Read ALL attached files carefully.
+//
+//				Tasks:
+//				1. Read the rubric
+//				2. Read the exam solutions
+//				3. Read the student's handwritten paper
+//				4. Transcribe the student answers
+//				5. Compare against solutions
+//				6. Assign marks out of 10
+//
+//				Rules:
+//				- Never invent student answers
+//				- If handwriting is unreadable, explicitly say so
+//				- Base grading on the supplied rubric
+//				- Be strict but fair
+//				- Return ONLY valid JSON
+//				- Do not return markdown
+//				- Do not wrap JSON in triple backticks
+//
+//				 	    JSON schema:
+//
+//				 	    {
+//				 		  "studentName": string | null,
+//				 	      "questionNumber": integer | null,
+//				 	      "questionText": string,
+//				 	      "maxMarks": integer,
+//				 	      "marksAwarded": integer,
+//				 	      "studentSolutionTranscription": string,
+//
+//				 	      "officialSolutionKeyPoints": [
+//				 	        string
+//				 	      ],
+//
+//				 	      "evaluation": {
+//				 	        "accuracy": [
+//				 	          string
+//				 	        ],
+//				 	        "coverage": [
+//				 	          string
+//				 	        ],
+//				 	        "useOfResources": [
+//				 	          string
+//				 	        ],
+//				 	        "structure": [
+//				 	          string
+//				 	        ],
+//				 	        "relevance": [
+//				 	          string
+//				 	        ]
+//				 	      },
+//				 	      "evaluationSummary": string,
+//
+//				 	      "strengths": [
+//				 	        string
+//				 	      ],
+//
+//				 	      "improvements": [
+//				 	        string
+//				 	      ],
+//				 	      "factualErrors": [
+//				 	        string
+//				 	      ],
+//
+//				 	      "teacherComments": [
+//				 	        string
+//				 	      ],
+//
+//				 	      "rubricReference": {
+//				 	        "band": {
+//				 				"min": integer,
+//				 				"max": integer
+//				 			},
+//				 	        "descriptor": string
+//				 	      },
+//
+//				 	      "confidence": {
+//				 			"transcriptionConfidence": number,
+//				 			"gradingConfidence": number
+//				 		   },
+//				 		   "requiresHumanReview": boolean
+//				 	    }
+//				 	    """);
+//
+//		UserMessage rubricMessage = UserMessage.builder().text("This is the grading rubric.")
+//				.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), rubric)).build();
+//
+//		UserMessage solutionsMessage = UserMessage.builder().text("These are the official exam solutions.")
+//				.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), solutions)).build();
+//
+//		UserMessage studentMessage = UserMessage.builder().text("""
+//				This is the student's handwritten exam paper.
+//
+//				Please:
+//				- transcribe the student's answer carefully
+//				- identify unclear or unreadable handwriting
+//				- compare the answer against the supplied marking scheme
+//				- evaluate the answer using the rubric
+//				- extract supporting evidence directly from the student's writing
+//				- assign marks fairly and accurately
+//				- return ONLY valid JSON matching the required schema
+//				""").media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), studentWork)).build();
+//
+//		Prompt prompt = new Prompt(List.of(systemMessage, rubricMessage, solutionsMessage, studentMessage));
+//
+//		ChatResponse response = chatModel.call(prompt);
+//
+//		var raw = response.getResult().getOutput().getText();
+//		System.out.println(raw);
+//
+//		System.out.println("=========================================================");
+//
+//		// once stable
+//		ExamEvaluationDto dto = objectMapper.readValue(raw, ExamEvaluationDto.class);
+//		System.out.println(dto);
+//
+//        validate(dto);
+//
+//        return dto;
+//    }
 
+    
+    
+    public ExamEvaluationDto evaluate(MultipartFile paper,
+            MultipartFile rub,
+            MultipartFile sol
+    ) throws Exception {
 
-		Resource studentWork = new FileSystemResource(paperPath);
+		Resource studentWork = paper.getResource(); //ByteArrayResource(paper.getBytes());
 
-		Resource solutions = new FileSystemResource(officialSolutionPath);
+		Resource solutions = sol.getResource(); // ByteArrayResource(sol.getBytes());
 
-		Resource rubric = new FileSystemResource(rubricPath);
+		Resource rubric = rub.getResource(); //ByteArrayResource(rub.getBytes());
 
 		SystemMessage systemMessage = new SystemMessage("""
 				 	    You are an experienced 9th-grade Islamic Studies teacher.
@@ -144,13 +283,20 @@ public class ExamEvaluationService {
 
 		Prompt prompt = new Prompt(List.of(systemMessage, rubricMessage, solutionsMessage, studentMessage));
 
-		ChatResponse response = chatModel.call(prompt);
-
+		ChatResponse response;
+		try {
+		    response = chatModel.call(prompt);
+		} catch (Exception e) {
+		    throw new RuntimeException("AI grading failed", e);
+		}
+		
 		var raw = response.getResult().getOutput().getText();
 		System.out.println(raw);
 
 		System.out.println("=========================================================");
 
+		
+		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 		// once stable
 		ExamEvaluationDto dto = objectMapper.readValue(raw, ExamEvaluationDto.class);
 		System.out.println(dto);
@@ -159,7 +305,8 @@ public class ExamEvaluationService {
 
         return dto;
     }
-
+    
+    
     private void validate(ExamEvaluationDto result) {
         if (result == null) {
             throw new IllegalStateException("AI returned null response");

@@ -44,20 +44,20 @@ public class HelloworldApplication {
 //        };
 //    }
 
-	@Bean
-	CommandLineRunner gradeExam() {
-
-		return args -> {
-
-			String studentWork = "/Users/hammadquddus/Downloads/upload-unmarked-papers.pdf";
-
-			String solutions = "/Users/hammadquddus/Downloads/upload-exam-solutions.pdf";
-
-			String rubric = "/Users/hammadquddus/Downloads/upload-level-descriptor.pdf";
-
-			service.evaluate(studentWork, rubric, solutions);
-
-		};
-	}
+//	@Bean
+//	CommandLineRunner gradeExam() {
+//
+//		return args -> {
+//
+//			String studentWork = "/Users/hammadquddus/Downloads/upload-unmarked-papers.pdf";
+//
+//			String solutions = "/Users/hammadquddus/Downloads/upload-exam-solutions.pdf";
+//
+//			String rubric = "/Users/hammadquddus/Downloads/upload-level-descriptor.pdf";
+//
+//			service.evaluate(studentWork, rubric, solutions);
+//
+//		};
+//	}
 
 }
