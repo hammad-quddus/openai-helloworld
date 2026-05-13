@@ -18,8 +18,8 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.util.MimeTypeUtils;
 
-import com.exammarker.helloworld.dto.ExamEvaluationDto;
-import com.exammarker.helloworld.service.ExamEvaluationService;
+import com.exammarker.dto.evaluation.ExamEvaluationDto;
+import com.exammarker.service.ExamEvaluationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @SpringBootApplication

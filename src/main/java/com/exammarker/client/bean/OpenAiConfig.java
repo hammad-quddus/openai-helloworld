@@ -1,4 +1,4 @@
-package com.exammarker.helloworld.client.bean;
+package com.exammarker.client.bean;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.context.annotation.Bean;

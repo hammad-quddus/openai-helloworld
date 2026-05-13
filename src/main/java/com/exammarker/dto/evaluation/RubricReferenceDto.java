@@ -1,4 +1,4 @@
-package com.exammarker.helloworld.dto;
+package com.exammarker.dto.evaluation;
 
 
 // judgement layer

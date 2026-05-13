@@ -1,4 +1,4 @@
-package com.exammarker.helloworld.controller;
+package com.exammarker.controller;
 
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.exammarker.helloworld.dto.ExamEvaluationDto;
-import com.exammarker.helloworld.service.ExamEvaluationService;
+import com.exammarker.dto.evaluation.ExamEvaluationDto;
+import com.exammarker.service.ExamEvaluationService;
 
 
 @CrossOrigin(origins = "http://localhost:5173")

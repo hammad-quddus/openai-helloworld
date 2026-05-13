@@ -1,9 +1,9 @@
-package com.exammarker.helloworld.client.openai;
+package com.exammarker.client.openai;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 
-import com.exammarker.helloworld.dto.ExamEvaluationDto;
+import com.exammarker.dto.evaluation.ExamEvaluationDto;
 
 @Component
 public class OpenAiClientWrapper {
