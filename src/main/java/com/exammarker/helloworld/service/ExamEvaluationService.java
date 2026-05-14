@@ -26,156 +26,42 @@ public class ExamEvaluationService {
 
     private final OpenAiChatModel chatModel;
     
-	private final ObjectMapper objectMapper = new ObjectMapper();
+	private final PdfAssemblyService pdfAssemblyService;
+    
+    private final ObjectMapper objectMapper = new ObjectMapper();
+	
+	
 
-    public ExamEvaluationService(OpenAiChatModel chatModel) {
+    public ExamEvaluationService(OpenAiChatModel chatModel, PdfAssemblyService pdfAssemblyService) {
         this.chatModel = chatModel;
+        this.pdfAssemblyService = pdfAssemblyService;
     }
-//    public ExamEvaluationDto evaluate(String paperPath, String rubricPath, String officialSolutionPath) throws JsonMappingException, JsonProcessingException {
-//
-//
-//		Resource studentWork = new FileSystemResource(paperPath);
-//
-//		Resource solutions = new FileSystemResource(officialSolutionPath);
-//
-//		Resource rubric = new FileSystemResource(rubricPath);
-//
-//		SystemMessage systemMessage = new SystemMessage("""
-//				 	    You are an experienced 9th-grade Islamic Studies teacher.
-//
-//				 	    Read ALL attached files carefully.
-//
-//				Tasks:
-//				1. Read the rubric
-//				2. Read the exam solutions
-//				3. Read the student's handwritten paper
-//				4. Transcribe the student answers
-//				5. Compare against solutions
-//				6. Assign marks out of 10
-//
-//				Rules:
-//				- Never invent student answers
-//				- If handwriting is unreadable, explicitly say so
-//				- Base grading on the supplied rubric
-//				- Be strict but fair
-//				- Return ONLY valid JSON
-//				- Do not return markdown
-//				- Do not wrap JSON in triple backticks
-//
-//				 	    JSON schema:
-//
-//				 	    {
-//				 		  "studentName": string | null,
-//				 	      "questionNumber": integer | null,
-//				 	      "questionText": string,
-//				 	      "maxMarks": integer,
-//				 	      "marksAwarded": integer,
-//				 	      "studentSolutionTranscription": string,
-//
-//				 	      "officialSolutionKeyPoints": [
-//				 	        string
-//				 	      ],
-//
-//				 	      "evaluation": {
-//				 	        "accuracy": [
-//				 	          string
-//				 	        ],
-//				 	        "coverage": [
-//				 	          string
-//				 	        ],
-//				 	        "useOfResources": [
-//				 	          string
-//				 	        ],
-//				 	        "structure": [
-//				 	          string
-//				 	        ],
-//				 	        "relevance": [
-//				 	          string
-//				 	        ]
-//				 	      },
-//				 	      "evaluationSummary": string,
-//
-//				 	      "strengths": [
-//				 	        string
-//				 	      ],
-//
-//				 	      "improvements": [
-//				 	        string
-//				 	      ],
-//				 	      "factualErrors": [
-//				 	        string
-//				 	      ],
-//
-//				 	      "teacherComments": [
-//				 	        string
-//				 	      ],
-//
-//				 	      "rubricReference": {
-//				 	        "band": {
-//				 				"min": integer,
-//				 				"max": integer
-//				 			},
-//				 	        "descriptor": string
-//				 	      },
-//
-//				 	      "confidence": {
-//				 			"transcriptionConfidence": number,
-//				 			"gradingConfidence": number
-//				 		   },
-//				 		   "requiresHumanReview": boolean
-//				 	    }
-//				 	    """);
-//
-//		UserMessage rubricMessage = UserMessage.builder().text("This is the grading rubric.")
-//				.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), rubric)).build();
-//
-//		UserMessage solutionsMessage = UserMessage.builder().text("These are the official exam solutions.")
-//				.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), solutions)).build();
-//
-//		UserMessage studentMessage = UserMessage.builder().text("""
-//				This is the student's handwritten exam paper.
-//
-//				Please:
-//				- transcribe the student's answer carefully
-//				- identify unclear or unreadable handwriting
-//				- compare the answer against the supplied marking scheme
-//				- evaluate the answer using the rubric
-//				- extract supporting evidence directly from the student's writing
-//				- assign marks fairly and accurately
-//				- return ONLY valid JSON matching the required schema
-//				""").media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), studentWork)).build();
-//
-//		Prompt prompt = new Prompt(List.of(systemMessage, rubricMessage, solutionsMessage, studentMessage));
-//
-//		ChatResponse response = chatModel.call(prompt);
-//
-//		var raw = response.getResult().getOutput().getText();
-//		System.out.println(raw);
-//
-//		System.out.println("=========================================================");
-//
-//		// once stable
-//		ExamEvaluationDto dto = objectMapper.readValue(raw, ExamEvaluationDto.class);
-//		System.out.println(dto);
-//
-//        validate(dto);
-//
-//        return dto;
-//    }
 
     
     
-    public ExamEvaluationDto evaluate(MultipartFile paper,
-            MultipartFile rub,
-            MultipartFile sol
+    public ExamEvaluationDto evaluate(List<MultipartFile> paperImages,
+    		List<MultipartFile> rubricImages,
+    		List<MultipartFile> solutionImages
     ) throws Exception {
 
-		Resource studentWork = paper.getResource(); //ByteArrayResource(paper.getBytes());
+    	byte[] paperPdfBytes = pdfAssemblyService.imagesToPdf(paperImages);
+    	byte[] rubricPdfBytes = pdfAssemblyService.imagesToPdf(rubricImages);
+    	byte[] solutionPdfBytes = pdfAssemblyService.imagesToPdf(solutionImages);
+    	
+    	
+//		Resource studentWork = paper.getResource(); 
+//
+//		Resource solutions = sol.getResource(); 
+//
+//		Resource rubric = rub.getResource();
 
-		Resource solutions = sol.getResource(); // ByteArrayResource(sol.getBytes());
+		Resource studentWorkPdf = new ByteArrayResource(paperPdfBytes); 
 
-		Resource rubric = rub.getResource(); //ByteArrayResource(rub.getBytes());
+		Resource solutionsPdf = new ByteArrayResource(solutionPdfBytes);
 
+		Resource rubricPdf = new ByteArrayResource(rubricPdfBytes);
+		
+    	
 		SystemMessage systemMessage = new SystemMessage("""
 				 	    You are an experienced 9th-grade Islamic Studies teacher.
 
@@ -263,10 +149,10 @@ public class ExamEvaluationService {
 				 	    """);
 
 		UserMessage rubricMessage = UserMessage.builder().text("This is the grading rubric.")
-				.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), rubric)).build();
+				.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), rubricPdf)).build();
 
 		UserMessage solutionsMessage = UserMessage.builder().text("These are the official exam solutions.")
-				.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), solutions)).build();
+				.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), solutionsPdf)).build();
 
 		UserMessage studentMessage = UserMessage.builder().text("""
 				This is the student's handwritten exam paper.
@@ -279,7 +165,7 @@ public class ExamEvaluationService {
 				- extract supporting evidence directly from the student's writing
 				- assign marks fairly and accurately
 				- return ONLY valid JSON matching the required schema
-				""").media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), studentWork)).build();
+				""").media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), studentWorkPdf)).build();
 
 		Prompt prompt = new Prompt(List.of(systemMessage, rubricMessage, solutionsMessage, studentMessage));
 

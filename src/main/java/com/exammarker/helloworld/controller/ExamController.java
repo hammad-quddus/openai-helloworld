@@ -1,6 +1,10 @@
 package com.exammarker.helloworld.controller;
 
+import java.io.IOException;
+import java.util.List;
+
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -10,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.exammarker.helloworld.dto.ExamEvaluationDto;
 import com.exammarker.helloworld.service.ExamEvaluationService;
+import com.exammarker.helloworld.service.PdfAssemblyService;
 
 
 @CrossOrigin(origins = "http://localhost:5173")
@@ -18,20 +23,40 @@ import com.exammarker.helloworld.service.ExamEvaluationService;
 public class ExamController {
 
 	
-    private final ExamEvaluationService service;
+    private final ExamEvaluationService evaluationService;
+    private final PdfAssemblyService pdfAssemblyservice;
 
 
-    public ExamController(ExamEvaluationService service) {
-        this.service = service;
+    public ExamController(ExamEvaluationService service, PdfAssemblyService pdfAssemblyservice) {
+        this.evaluationService = service;
+        this.pdfAssemblyservice = pdfAssemblyservice;
     }
 
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadExam(
+    		@RequestPart("paper") List<MultipartFile> paperImages,
+    		@RequestPart(value = "rubric", required = false) List<MultipartFile> rubricImages,
+    		@RequestPart(value = "solutions", required = false) List<MultipartFile> solutionImages
+    ) {
+
+        // process images
+    	System.out.println(paperImages.size());
+    	try {
+			pdfAssemblyservice.imagesToPdf(paperImages);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+    	return null;
+//        return ResponseEntity.ok().build();
+    }
+    
     @PostMapping(value = "/evaluate", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ExamEvaluationDto evaluate(
-            @RequestPart("paper") MultipartFile paper,
-            @RequestPart("rubric") MultipartFile rubric,
-            @RequestPart("solutions") MultipartFile solutions
+            @RequestPart("paper") List<MultipartFile> paperImages,
+            @RequestPart("rubric") List<MultipartFile> rubricImages,
+            @RequestPart("solutions") List<MultipartFile> solutionsImages
     ) throws Exception {
     	
-    	return service.evaluate(paper, rubric, solutions);
+    	return evaluationService.evaluate(paperImages, rubricImages, solutionsImages);
    }
 }
