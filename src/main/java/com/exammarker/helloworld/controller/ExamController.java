@@ -3,6 +3,8 @@ package com.exammarker.helloworld.controller;
 import java.io.IOException;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -22,7 +24,10 @@ import com.exammarker.helloworld.service.PdfAssemblyService;
 @RequestMapping("/api/exam")
 public class ExamController {
 
-	
+    private static final Logger log =
+            LoggerFactory.getLogger(PdfAssemblyService.class);
+    
+    
     private final ExamEvaluationService evaluationService;
     private final PdfAssemblyService pdfAssemblyservice;
 
@@ -40,7 +45,7 @@ public class ExamController {
     ) {
 
         // process images
-    	System.out.println(paperImages.size());
+    	
     	try {
 			pdfAssemblyservice.imagesToPdf(paperImages);
 		} catch (IOException e) {
@@ -54,9 +59,15 @@ public class ExamController {
     public ExamEvaluationDto evaluate(
             @RequestPart("paperImages") List<MultipartFile> paperImages,
             @RequestPart("rubricImages") List<MultipartFile> rubricImages,
-            @RequestPart("solutionImages") List<MultipartFile> solutionsImages
+            @RequestPart("solutionImages") List<MultipartFile> solutionImages
     ) throws Exception {
-    	System.out.println("evaluat...");
-    	return evaluationService.evaluate(paperImages, rubricImages, solutionsImages);
+    	
+    	log.info("endpoint: evaluat...");
+    	log.info("total paperImages: " + paperImages.size());
+    	log.info("total rubricImages: " + rubricImages.size());
+    	log.info("total solutionImages: " + solutionImages.size());
+    	
+    	
+    	return evaluationService.evaluate(paperImages, rubricImages, solutionImages);
    }
 }

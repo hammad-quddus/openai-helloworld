@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -23,6 +25,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ExamEvaluationService {
+	
+    private static final Logger log =
+            LoggerFactory.getLogger(PdfAssemblyService.class);
 
 	private final OpenAiChatModel chatModel;
 
@@ -173,12 +178,13 @@ public class ExamEvaluationService {
 		}
 
 		var raw = response.getResult().getOutput().getText();
-		System.out.println(raw);
 
-		System.out.println("=========================================================");
+		log.info("Response for ai model:");
+		log.info(raw);
+
 
 		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-		// once stable
+
 		ExamEvaluationDto dto = objectMapper.readValue(raw, ExamEvaluationDto.class);
 		System.out.println(dto);
 
