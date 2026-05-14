@@ -24,129 +24,125 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class ExamEvaluationService {
 
-    private final OpenAiChatModel chatModel;
-    
+	private final OpenAiChatModel chatModel;
+
 	private final PdfAssemblyService pdfAssemblyService;
-    
-    private final ObjectMapper objectMapper = new ObjectMapper();
-	
-	
 
-    public ExamEvaluationService(OpenAiChatModel chatModel, PdfAssemblyService pdfAssemblyService) {
-        this.chatModel = chatModel;
-        this.pdfAssemblyService = pdfAssemblyService;
-    }
+	private final ObjectMapper objectMapper = new ObjectMapper();
 
-    
-    
-    public ExamEvaluationDto evaluate(List<MultipartFile> paperImages,
-    		List<MultipartFile> rubricImages,
-    		List<MultipartFile> solutionImages
-    ) throws Exception {
+	public ExamEvaluationService(OpenAiChatModel chatModel, PdfAssemblyService pdfAssemblyService) {
+		this.chatModel = chatModel;
+		this.pdfAssemblyService = pdfAssemblyService;
+	}
 
-    	byte[] paperPdfBytes = pdfAssemblyService.imagesToPdf(paperImages);
-    	byte[] rubricPdfBytes = pdfAssemblyService.imagesToPdf(rubricImages);
-    	byte[] solutionPdfBytes = pdfAssemblyService.imagesToPdf(solutionImages);
-    	
-    	
-//		Resource studentWork = paper.getResource(); 
-//
-//		Resource solutions = sol.getResource(); 
-//
-//		Resource rubric = rub.getResource();
+	public ExamEvaluationDto evaluate(List<MultipartFile> paperImages, List<MultipartFile> rubricImages,
+			List<MultipartFile> solutionImages) throws Exception {
 
-		Resource studentWorkPdf = new ByteArrayResource(paperPdfBytes); 
+		byte[] paperPdfBytes = pdfAssemblyService.imagesToPdf(paperImages);
+		byte[] rubricPdfBytes = pdfAssemblyService.imagesToPdf(rubricImages);
+		byte[] solutionPdfBytes = pdfAssemblyService.imagesToPdf(solutionImages);
+
+		Resource studentWorkPdf = new ByteArrayResource(paperPdfBytes);
 
 		Resource solutionsPdf = new ByteArrayResource(solutionPdfBytes);
 
 		Resource rubricPdf = new ByteArrayResource(rubricPdfBytes);
-		
-    	
-		SystemMessage systemMessage = new SystemMessage("""
-				 	    You are an experienced 9th-grade Islamic Studies teacher.
 
-				 	    Read ALL attached files carefully.
+		SystemMessage systemMessage = new SystemMessage(
+				"""
+						        You are an experienced 9th-grade Islamic Studies teacher.
 
-				Tasks:
-				1. Read the rubric
-				2. Read the exam solutions
-				3. Read the student's handwritten paper
-				4. Transcribe the student answers
-				5. Compare against solutions
-				6. Assign marks out of 10
+						        Read ALL attached files carefully.
 
-				Rules:
-				- Never invent student answers
-				- If handwriting is unreadable, explicitly say so
-				- Base grading on the supplied rubric
-				- Be strict but fair
-				- Return ONLY valid JSON
-				- Do not return markdown
-				- Do not wrap JSON in triple backticks
+						Tasks:
+						1. Read the rubric
+						2. Read the exam solutions
+						3. Read the student's handwritten paper
+						4. Transcribe the student answers
+						5. Compare against solutions
+						6. Assign marks out of 10
+						7. Identify key expected points that are missing or insufficiently addressed in the student's answer (coverage gaps)
 
-				 	    JSON schema:
+						Rules:
+						- Never invent student answers
+						- If handwriting is unreadable, explicitly say so
+						- Base grading on the supplied rubric
+						- Be strict but fair
+						- Coverage gaps must strictly come from rubric/official solutions (do not hallucinate new expectations)
+						- Return ONLY valid JSON
+						- Do not return markdown
+						- Do not wrap JSON in triple backticks
+						- The uploaded pages of the student paper may be out of order; use content continuity and context to infer the correct sequence where necessary before grading.
+						
+						JSON schema:
+						{
+						  "studentName": string | null,
+						  "questionNumber": integer | null,
+						  "questionText": string,
+						  "maxMarks": integer,
+						  "marksAwarded": integer,
+						  "studentSolutionTranscription": string,
 
-				 	    {
-				 		  "studentName": string | null,
-				 	      "questionNumber": integer | null,
-				 	      "questionText": string,
-				 	      "maxMarks": integer,
-				 	      "marksAwarded": integer,
-				 	      "studentSolutionTranscription": string,
+						  "officialSolutionKeyPoints": [
+						    string
+						  ],
 
-				 	      "officialSolutionKeyPoints": [
-				 	        string
-				 	      ],
+						  "coverageGaps": [
+						    string
+						  ],
 
-				 	      "evaluation": {
-				 	        "accuracy": [
-				 	          string
-				 	        ],
-				 	        "coverage": [
-				 	          string
-				 	        ],
-				 	        "useOfResources": [
-				 	          string
-				 	        ],
-				 	        "structure": [
-				 	          string
-				 	        ],
-				 	        "relevance": [
-				 	          string
-				 	        ]
-				 	      },
-				 	      "evaluationSummary": string,
+						  "evaluation": {
+						    "accuracy": [
+						      string
+						    ],
+						    "coverage": [
+						      string
+						    ],
+						    "useOfResources": [
+						      string
+						    ],
+						    "structure": [
+						      string
+						    ],
+						    "relevance": [
+						      string
+						    ]
+						  },
 
-				 	      "strengths": [
-				 	        string
-				 	      ],
+						  "evaluationSummary": string,
 
-				 	      "improvements": [
-				 	        string
-				 	      ],
-				 	      "factualErrors": [
-				 	        string
-				 	      ],
+						  "strengths": [
+						    string
+						  ],
 
-				 	      "teacherComments": [
-				 	        string
-				 	      ],
+						  "improvements": [
+						    string
+						  ],
 
-				 	      "rubricReference": {
-				 	        "band": {
-				 				"min": integer,
-				 				"max": integer
-				 			},
-				 	        "descriptor": string
-				 	      },
+						  "factualErrors": [
+						    string
+						  ],
 
-				 	      "confidence": {
-				 			"transcriptionConfidence": number,
-				 			"gradingConfidence": number
-				 		   },
-				 		   "requiresHumanReview": boolean
-				 	    }
-				 	    """);
+						  "teacherComments": [
+						    string
+						  ],
+
+						  "rubricReference": {
+						    "band": {
+						      "min": integer,
+						      "max": integer
+						    },
+						    "descriptor": string
+						  },
+
+						  "confidence": {
+						    "transcriptionConfidence": number,
+						    "gradingConfidence": number
+						  },
+
+						  "requiresHumanReview": boolean
+						}
+						""");
 
 		UserMessage rubricMessage = UserMessage.builder().text("This is the grading rubric.")
 				.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), rubricPdf)).build();
@@ -171,39 +167,37 @@ public class ExamEvaluationService {
 
 		ChatResponse response;
 		try {
-		    response = chatModel.call(prompt);
+			response = chatModel.call(prompt);
 		} catch (Exception e) {
-		    throw new RuntimeException("AI grading failed", e);
+			throw new RuntimeException("AI grading failed", e);
 		}
-		
+
 		var raw = response.getResult().getOutput().getText();
 		System.out.println(raw);
 
 		System.out.println("=========================================================");
 
-		
 		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 		// once stable
 		ExamEvaluationDto dto = objectMapper.readValue(raw, ExamEvaluationDto.class);
 		System.out.println(dto);
 
-        validate(dto);
+		validate(dto);
 
-        return dto;
-    }
-    
-    
-    private void validate(ExamEvaluationDto result) {
-        if (result == null) {
-            throw new IllegalStateException("AI returned null response");
-        }
+		return dto;
+	}
 
-        if (result.marksAwarded() == null || result.maxMarks() == null) {
-            throw new IllegalStateException("Missing marks in evaluation");
-        }
+	private void validate(ExamEvaluationDto result) {
+		if (result == null) {
+			throw new IllegalStateException("AI returned null response");
+		}
 
-        if (result.rubricReference() == null) {
-            throw new IllegalStateException("Missing rubric reference");
-        }
-    }
+		if (result.marksAwarded() == null || result.maxMarks() == null) {
+			throw new IllegalStateException("Missing marks in evaluation");
+		}
+
+		if (result.rubricReference() == null) {
+			throw new IllegalStateException("Missing rubric reference");
+		}
+	}
 }

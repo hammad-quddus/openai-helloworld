@@ -24,7 +24,8 @@ public record ExamEvaluationDto(
     List<String> improvements,
     List<String> factualErrors,
     List<String> teacherComments,
-
+    List<String> coverageGaps,
+	
     RubricReferenceDto rubricReference,
 
     ConfidenceDto confidence,

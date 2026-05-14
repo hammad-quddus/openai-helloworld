@@ -17,7 +17,7 @@ import com.exammarker.helloworld.service.ExamEvaluationService;
 import com.exammarker.helloworld.service.PdfAssemblyService;
 
 
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/exam")
 public class ExamController {
@@ -56,7 +56,7 @@ public class ExamController {
             @RequestPart("rubricImages") List<MultipartFile> rubricImages,
             @RequestPart("solutionImages") List<MultipartFile> solutionsImages
     ) throws Exception {
-    	
+    	System.out.println("evaluat...");
     	return evaluationService.evaluate(paperImages, rubricImages, solutionsImages);
    }
 }
