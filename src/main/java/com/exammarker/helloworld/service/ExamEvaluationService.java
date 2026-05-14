@@ -25,9 +25,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ExamEvaluationService {
-	
-    private static final Logger log =
-            LoggerFactory.getLogger(PdfAssemblyService.class);
+
+	private static final Logger log = LoggerFactory.getLogger(PdfAssemblyService.class);
 
 	private final OpenAiChatModel chatModel;
 
@@ -78,7 +77,7 @@ public class ExamEvaluationService {
 						- Do not return markdown
 						- Do not wrap JSON in triple backticks
 						- The uploaded pages of the student paper may be out of order; use content continuity and context to infer the correct sequence where necessary before grading.
-						
+
 						JSON schema:
 						{
 						  "studentName": string | null,
@@ -182,11 +181,9 @@ public class ExamEvaluationService {
 		log.info("Response for ai model:");
 		log.info(raw);
 
-
 		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
 		ExamEvaluationDto dto = objectMapper.readValue(raw, ExamEvaluationDto.class);
-		System.out.println(dto);
 
 		validate(dto);
 
