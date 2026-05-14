@@ -52,9 +52,9 @@ public class ExamController {
     
     @PostMapping(value = "/evaluate", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ExamEvaluationDto evaluate(
-            @RequestPart("paper") List<MultipartFile> paperImages,
-            @RequestPart("rubric") List<MultipartFile> rubricImages,
-            @RequestPart("solutions") List<MultipartFile> solutionsImages
+            @RequestPart("paperImages") List<MultipartFile> paperImages,
+            @RequestPart("rubricImages") List<MultipartFile> rubricImages,
+            @RequestPart("solutionImages") List<MultipartFile> solutionsImages
     ) throws Exception {
     	
     	return evaluationService.evaluate(paperImages, rubricImages, solutionsImages);
