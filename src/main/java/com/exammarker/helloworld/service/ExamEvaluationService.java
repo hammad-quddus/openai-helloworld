@@ -178,7 +178,7 @@ public class ExamEvaluationService {
 
 		var raw = response.getResult().getOutput().getText();
 
-		log.info("Response for ai model:");
+		log.info("====== Response from ai model: ========");
 		log.info(raw);
 
 		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
