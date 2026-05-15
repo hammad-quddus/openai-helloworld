@@ -4,6 +4,8 @@ import java.util.List;
 
 public record QuestionSolutionDto(
         String questionId,
+        String questionText,
+        int maxMarks,
         String modelAnswer,
         List<String> keyPoints,
         List<String> acceptableAlternativePoints,

@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.exammarker.helloworld.dto.ExamEvaluationDto;
 import com.exammarker.helloworld.dto.rubric.RubrickDto;
 import com.exammarker.helloworld.dto.solution.SolutionDto;
+import com.exammarker.helloworld.dto.studentpaper.StudentPaperDto;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -340,7 +341,9 @@ public class ExamEvaluationService {
 			  "questions": [
 			    {
 			      "questionId": "string",
+			      "questionText": "string",
 			      "modelAnswer": "string",
+			      "maxMarks":int,
 			      "keyPoints": ["string"],
 			      "acceptableAlternativePoints": ["string"],
 			      "evidenceReferences": ["string"]
@@ -383,6 +386,108 @@ public class ExamEvaluationService {
 	return dto;
 }
 	///
+	/// 
+	/// 
+	/// 
+	
+	public StudentPaperDto transcribeStudentPaper(List<MultipartFile> studentpaperImages) throws Exception {
+
+		byte[] studentpaperPdfBytes = pdfAssemblyService.imagesToPdf(studentpaperImages);
+		Resource studentpaperPdf = new ByteArrayResource(studentpaperPdfBytes);
+
+		return transcribeStudentPaper(studentpaperPdf);
+
+	}
+
+	
+	
+	public StudentPaperDto transcribeStudentPaper(Resource studentPaperPdf) throws Exception {
+
+		SystemMessage systemMessage = new SystemMessage("""
+				You are a student exam paper transcription engine.
+
+				TASK:
+				Extract and structure the student's answers from the attached PDF into the provided JSON schema.
+
+				STRICT RULES:
+				- Only extract what is explicitly written in the student paper.
+				- Do NOT evaluate correctness.
+				- Do NOT infer missing answers or expand incomplete sentences.
+				- Do NOT correct grammar, spelling, or structure.
+				- Preserve student wording as closely as possible.
+
+				- Extract question answers in order as they appear in the paper.
+				- If question identifiers are not explicitly clear, infer them using:
+				  (1) ordering in the document
+				  (2) visible markers such as "a", "b", "Q1", "(a)", numbering patterns
+				
+				- Assign questionId using best available match to expected exam structure.
+				- If exact label is unknown, still assign a stable identifier based on position:
+				  e.g. "Q1", "Q2", "Q3" or "1", "2", "3"
+				
+				- Do NOT leave questionId null if any structure can be inferred.
+
+				- If student identity is present anywhere in header, footer, or first page text (e.g. Name, Candidate Name, Roll No), extract it into studentId.
+				  If multiple candidates exist, pick the most explicit identifier.
+
+				If text is unclear or unreadable:
+				- set value to null or best partial extraction possible
+
+				Ignore:
+				- formatting issues
+				- handwriting noise / OCR artifacts
+				- layout structure
+
+				The goal is structural transcription, not reasoning.
+
+				OUTPUT:
+				Must strictly follow JSON schema.
+				No extra fields.
+				No commentary.
+
+				JSON Schema:
+
+				{
+				  "subject": "string",
+				  "studentId": "string",
+
+				  "questions": [
+				    {
+				      "questionId": "string",
+				      "answerText": "string"
+				    }
+				  ]
+				}
+				""");
+
+		UserMessage studentMessage = UserMessage.builder()
+				.text("This is a student's exam paper. Transcribe answers exactly.")
+				.media(new Media(
+						MimeTypeUtils.parseMimeType("application/pdf"),
+						studentPaperPdf))
+				.build();
+
+		Prompt prompt = new Prompt(List.of(systemMessage, studentMessage));
+
+		ChatResponse response;
+
+		try {
+			response = chatModel.call(prompt);
+		} catch (Exception e) {
+			throw new RuntimeException("AI student paper parsing failed", e);
+		}
+
+		var raw = response.getResult().getOutput().getText();
+
+		log.info("====== Response from AI model for student paper transcription: ========");
+		log.info(raw);
+
+		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+		StudentPaperDto dto = objectMapper.readValue(raw, StudentPaperDto.class);
+
+		return dto;
+	}
 
 	private void validate(ExamEvaluationDto result) {
 		if (result == null) {
