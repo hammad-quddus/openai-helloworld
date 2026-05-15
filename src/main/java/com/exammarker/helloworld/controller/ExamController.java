@@ -1,12 +1,10 @@
 package com.exammarker.helloworld.controller;
 
-import java.io.IOException;
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.exammarker.helloworld.dto.ExamEvaluationDto;
+import com.exammarker.helloworld.dto.rubric.RubrickDto;
 import com.exammarker.helloworld.service.ExamEvaluationService;
 import com.exammarker.helloworld.service.PdfAssemblyService;
 
@@ -37,22 +36,17 @@ public class ExamController {
         this.pdfAssemblyservice = pdfAssemblyservice;
     }
 
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadExam(
-    		@RequestPart("paper") List<MultipartFile> paperImages,
-    		@RequestPart(value = "rubric", required = false) List<MultipartFile> rubricImages,
-    		@RequestPart(value = "solutions", required = false) List<MultipartFile> solutionImages
-    ) {
+    @PostMapping(value = "/transcriberubric", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public RubrickDto uploadExam(
 
-        // process images
-    	
-    	try {
-			pdfAssemblyservice.imagesToPdf(paperImages);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-    	return null;
-//        return ResponseEntity.ok().build();
+    		@RequestPart(value = "rubric", required = true) List<MultipartFile> rubricImages
+
+    ) throws Exception {
+
+    	log.info("endpoint: transcriberubric...");
+ 
+    	return evaluationService.transcribeRubrick(rubricImages);
+
     }
     
     @PostMapping(value = "/evaluate", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

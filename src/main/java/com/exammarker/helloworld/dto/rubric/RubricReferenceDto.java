@@ -1,5 +1,6 @@
-package com.exammarker.helloworld.dto;
+package com.exammarker.helloworld.dto.rubric;
 
+import com.exammarker.helloworld.dto.BandDto;
 
 // judgement layer
 public record RubricReferenceDto(

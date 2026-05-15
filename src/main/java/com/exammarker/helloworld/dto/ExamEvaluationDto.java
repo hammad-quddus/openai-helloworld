@@ -2,6 +2,8 @@ package com.exammarker.helloworld.dto;
 
 import java.util.List;
 
+import com.exammarker.helloworld.dto.rubric.RubricReferenceDto;
+
 
 // raw output layer
 public record ExamEvaluationDto(

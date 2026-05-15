@@ -1,10 +1,12 @@
 package com.exammarker.helloworld.service;
 
 import com.exammarker.helloworld.dto.ExamEvaluationDto;
+import com.exammarker.helloworld.dto.rubric.RubrickDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 
 import java.util.List;
 
@@ -189,6 +191,104 @@ public class ExamEvaluationService {
 
 		return dto;
 	}
+
+	////////
+
+	public RubrickDto transcribeRubrick(List<MultipartFile> rubricImages) throws Exception {
+
+		byte[] rubricPdfBytes = pdfAssemblyService.imagesToPdf(rubricImages);
+		Resource rubricPdf = new ByteArrayResource(rubricPdfBytes);
+
+		return transcribeRubrick(rubricPdf);
+
+	}
+
+	public RubrickDto transcribeRubrick(Resource rubricPdf) throws Exception {
+
+		SystemMessage systemMessage = new SystemMessage("""
+				You are a rubric transcription engine.
+
+				TASK:
+				Extract and normalize the rubric from the attached PDF into the provided JSON schema.
+
+				STRICT RULES:
+				- Only extract information explicitly present in the rubric.
+				- Do NOT infer missing mark schemes or grading logic.
+				- Do NOT improve, rewrite, or reinterpret content.
+				- Preserve original meaning as closely as possible.
+
+				If information is unclear, missing, or unreadable:
+				- set the field to null
+				- add explanation to "warnings"
+
+				Ignore:
+				- formatting issues
+				- layout artifacts
+				- OCR noise
+				- repeated or misaligned text
+
+				The goal is structural transcription, not reasoning.
+
+				OUTPUT:
+				Must strictly follow JSON schema. No extra fields. No commentary.
+
+										JSON Schema:
+
+				{
+				  "rubric_id": "string",
+				  "subject": "string",
+
+				  "questions": [
+				    {
+				      "question_id": "string",
+				      "max_marks": "number",
+
+				      "level_scale":
+				        [{
+				          "level_number": int,
+				          "label": "string",
+				          "mark_range": {
+				            "min": 0,
+				            "max": 0
+				          },
+				          "descriptor": "string",
+				          "characteristics": ["string"],
+				          "evidence_keywords": ["string"]
+				        }]
+				    }
+				  ]
+
+				}
+																""");
+
+		UserMessage rubricMessage = UserMessage.builder().text("This is the grading rubric.. pls..")
+				.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), rubricPdf)).build();
+
+		Prompt prompt = new Prompt(List.of(systemMessage, rubricMessage));
+
+		ChatResponse response;
+		try {
+			response = chatModel.call(prompt);
+		} catch (Exception e) {
+			throw new RuntimeException("AI parsing failed", e);
+		}
+
+		var raw = response.getResult().getOutput().getText();
+
+		log.info("====== Response from ai model for rubric transcription: ========");
+		log.info(raw);
+
+		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+		objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+
+		RubrickDto dto = objectMapper.readValue(raw, RubrickDto.class);
+
+		return dto;
+	}
+
+	///
+	///
 
 	private void validate(ExamEvaluationDto result) {
 		if (result == null) {
