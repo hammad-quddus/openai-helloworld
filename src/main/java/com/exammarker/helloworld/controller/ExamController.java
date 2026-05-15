@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.exammarker.helloworld.dto.ExamEvaluationDto;
 import com.exammarker.helloworld.dto.rubric.RubrickDto;
+import com.exammarker.helloworld.dto.solution.SolutionDto;
 import com.exammarker.helloworld.service.ExamEvaluationService;
 import com.exammarker.helloworld.service.PdfAssemblyService;
 
@@ -36,8 +37,22 @@ public class ExamController {
         this.pdfAssemblyservice = pdfAssemblyservice;
     }
 
+    @PostMapping(value = "/transcribesolution", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public SolutionDto transcribeSolution(
+
+    		@RequestPart(value = "solution", required = true) List<MultipartFile> solutionImages
+
+    ) throws Exception {
+
+    	log.info("endpoint: transcribesolution...");
+ 
+    	return evaluationService.transcribeSolutions(solutionImages);
+
+    }
+   
+    
     @PostMapping(value = "/transcriberubric", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public RubrickDto uploadExam(
+    public RubrickDto transcribeRubric(
 
     		@RequestPart(value = "rubric", required = true) List<MultipartFile> rubricImages
 

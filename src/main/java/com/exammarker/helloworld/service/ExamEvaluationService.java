@@ -1,13 +1,5 @@
 package com.exammarker.helloworld.service;
 
-import com.exammarker.helloworld.dto.ExamEvaluationDto;
-import com.exammarker.helloworld.dto.rubric.RubrickDto;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -19,11 +11,17 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.content.Media;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.exammarker.helloworld.dto.ExamEvaluationDto;
+import com.exammarker.helloworld.dto.rubric.RubrickDto;
+import com.exammarker.helloworld.dto.solution.SolutionDto;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 
 @Service
 public class ExamEvaluationService {
@@ -232,32 +230,32 @@ public class ExamEvaluationService {
 				OUTPUT:
 				Must strictly follow JSON schema. No extra fields. No commentary.
 
-										JSON Schema:
+				JSON Schema:
 
 				{
-				  "rubric_id": "string",
+				  "rubricId": "string",
 				  "subject": "string",
-
+				
 				  "questions": [
 				    {
-				      "question_id": "string",
-				      "max_marks": "number",
-
-				      "level_scale":
-				        [{
-				          "level_number": int,
+				      "questionId": "string",
+				      "maxMarks": "number",
+				
+				      "levelScale": [
+				        {
+				          "levelNumber": 0,
 				          "label": "string",
-				          "mark_range": {
+				          "markRange": {
 				            "min": 0,
 				            "max": 0
 				          },
 				          "descriptor": "string",
 				          "characteristics": ["string"],
-				          "evidence_keywords": ["string"]
-				        }]
+				          "evidenceKeywords": ["string"]
+				        }
+				      ]
 				    }
 				  ]
-
 				}
 																""");
 
@@ -280,7 +278,7 @@ public class ExamEvaluationService {
 
 		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-		objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+//		objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
 
 		RubrickDto dto = objectMapper.readValue(raw, RubrickDto.class);
 
@@ -288,6 +286,102 @@ public class ExamEvaluationService {
 	}
 
 	///
+	/// 
+	/// 
+	/// 
+	///
+	
+	public SolutionDto transcribeSolutions(List<MultipartFile> solutionsImages) throws Exception {
+
+		byte[] solutionPdfBytes = pdfAssemblyService.imagesToPdf(solutionsImages);
+		Resource solutionPdf = new ByteArrayResource(solutionPdfBytes);
+
+		return transcribeSolutions(solutionPdf);
+
+	}
+
+	
+	
+	public SolutionDto transcribeSolutions(Resource solutionPdf) throws Exception {
+
+	SystemMessage systemMessage = new SystemMessage("""
+			You are an exam solution transcription engine.
+
+			TASK:
+			Extract and normalize the official exam solutions from the attached PDF into the provided JSON schema.
+
+			STRICT RULES:
+			- Only extract information explicitly present in the solutions document.
+			- Do NOT invent additional answers, explanations, or grading criteria.
+			- Do NOT evaluate quality or assign marks.
+			- Preserve original meaning and expected answer content as closely as possible.
+
+			If information is unclear, missing, or unreadable:
+			- set the field to null
+
+			Ignore:
+			- formatting issues
+			- layout artifacts
+			- OCR noise
+			- repeated or misaligned text
+
+			The goal is structural transcription, not reasoning.
+
+			OUTPUT:
+			Must strictly follow JSON schema.
+			No extra fields.
+			No commentary.
+
+			JSON Schema:
+
+			{
+			  "subject": "string",
+			
+			  "questions": [
+			    {
+			      "questionId": "string",
+			      "modelAnswer": "string",
+			      "keyPoints": ["string"],
+			      "acceptableAlternativePoints": ["string"],
+			      "evidenceReferences": ["string"]
+			    }
+			  ]
+			}
+			""");
+
+	UserMessage solutionMessage = UserMessage.builder()
+			.text("These are the official exam solutions.")
+			.media(new Media(
+					MimeTypeUtils.parseMimeType("application/pdf"),
+					solutionPdf))
+			.build();
+
+	Prompt prompt = new Prompt(List.of(systemMessage, solutionMessage));
+
+	ChatResponse response;
+
+	try {
+		response = chatModel.call(prompt);
+	} catch (Exception e) {
+		throw new RuntimeException("AI solution parsing failed", e);
+	}
+
+	var raw = response.getResult().getOutput().getText();
+
+	log.info("====== Response from ai model for solution transcription: ========");
+	log.info(raw);
+
+	objectMapper.configure(
+			DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+			false);
+
+//	objectMapper.setPropertyNamingStrategy(
+//			PropertyNamingStrategies.SNAKE_CASE);
+
+	SolutionDto dto = objectMapper.readValue(raw, SolutionDto.class);
+
+	return dto;
+}
 	///
 
 	private void validate(ExamEvaluationDto result) {
