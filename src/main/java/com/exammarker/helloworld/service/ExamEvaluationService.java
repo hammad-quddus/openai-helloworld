@@ -212,36 +212,41 @@ public class ExamEvaluationService {
 
 				STRICT RULES:
 				- Only extract information explicitly present in the rubric.
-				- Do NOT infer missing mark schemes or grading logic.
-				- Do NOT improve, rewrite, or reinterpret content.
-				- Preserve original meaning as closely as possible.
+				- Do NOT infer missing grading structures.
+				- Do NOT rewrite or reinterpret descriptors.
+				- Preserve rubric meaning as closely as possible.
 
-				If information is unclear, missing, or unreadable:
-				- set the field to null
-				- add explanation to "warnings"
+				- Rubric categories may apply to multiple questions or question types.
+				- Preserve assessment objective groupings if present (e.g. AO1, AO2).
+				- Do not convert rubric categories into individual exam questions.
+
+				If information is unclear or unreadable:
+				- set field to null
 
 				Ignore:
-				- formatting issues
-				- layout artifacts
+				- formatting artifacts
 				- OCR noise
-				- repeated or misaligned text
-
-				The goal is structural transcription, not reasoning.
+				- repeated text
+				- layout inconsistencies
 
 				OUTPUT:
-				Must strictly follow JSON schema. No extra fields. No commentary.
+				Must strictly follow JSON schema.
+				No extra fields.
+				No commentary.
 
 				JSON Schema:
 
 				{
 				  "rubricId": "string",
 				  "subject": "string",
-				
-				  "questions": [
+
+				  "categories": [
 				    {
-				      "questionId": "string",
-				      "maxMarks": "number",
-				
+				      "rubricCategoryId": "string",
+				      "assessmentObjective": "string",
+				      "appliesTo": "string",
+				      "maxMarks": 0,
+
 				      "levelScale": [
 				        {
 				          "levelNumber": 0,
@@ -258,8 +263,8 @@ public class ExamEvaluationService {
 				    }
 				  ]
 				}
-																""");
-
+				""");
+		
 		UserMessage rubricMessage = UserMessage.builder().text("This is the grading rubric.. pls..")
 				.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), rubricPdf)).build();
 
