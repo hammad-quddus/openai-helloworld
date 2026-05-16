@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.exammarker.helloworld.dto.ExamEvaluationDto;
+import com.exammarker.helloworld.dto.QuestionEvaluationDto;
 import com.exammarker.helloworld.dto.rubric.RubricDto;
 import com.exammarker.helloworld.dto.solution.SolutionDto;
 import com.exammarker.helloworld.dto.studentpaper.StudentPaperDto;
@@ -39,7 +39,128 @@ public class ExamEvaluationService {
 		this.pdfAssemblyService = pdfAssemblyService;
 	}
 
-	public ExamEvaluationDto evaluate(List<MultipartFile> paperImages, List<MultipartFile> rubricImages,
+	public StudentPaperDto evaluateOneQuestionFromExam(String questionId, RubricDto rubricDto, SolutionDto solutionDto, 
+			StudentPaperDto studentPaperDto) {
+		
+		
+		return null;
+	}
+	
+//////////////
+/// 
+	public StudentPaperDto alignStudentPaperToQuestions(
+	        StudentPaperDto studentPaperDto,
+	        SolutionDto solutionDto
+	) {
+
+	    try {
+
+	        // 1. Serialize inputs to JSON (THIS is what the LLM consumes)
+	        String studentJson = objectMapper.writeValueAsString(studentPaperDto);
+	        String solutionJson = objectMapper.writeValueAsString(solutionDto);
+
+	        // 2. System prompt (alignment engine)
+	        SystemMessage systemMessage = new SystemMessage("""
+	        		You are an exam paper alignment engine.
+
+	        		TASK:
+	        		You will receive:
+	        		1. A student's exam paper (StudentPaperDto)
+	        		2. An official solution structure (SolutionDto)
+
+	        		Your job is to ALIGN each student answer to the correct official question.
+
+	        		────────────────────────────────────
+	        		CRITICAL RULES
+	        		────────────────────────────────────
+
+	        		- Do NOT grade or evaluate answers.
+	        		- Do NOT modify student answerText.
+	        		- Do NOT invent questionIds.
+	        		- ALL questionIds MUST come from SolutionDto.questionMappings.
+	        		- ALL questionText MUST come from SolutionDto.
+
+	        		────────────────────────────────────
+	        		ALIGNMENT LOGIC (priority order)
+	        		────────────────────────────────────
+
+	        		Match each student answer to the correct question using:
+
+	        		1. Similarity of student answer to modelAnswer / keyPoints
+	        		2. Presence of partial questionText in student data (if any)
+	        		3. rawQuestionLabel (weak signal only)
+	        		4. Order of appearance in paper (fallback only)
+
+	        		────────────────────────────────────
+	        		STRICT OUTPUT RULES
+	        		────────────────────────────────────
+
+	        		For each student question:
+	        		- Assign correct questionId from SolutionDto
+	        		- Attach correct questionText from SolutionDto
+	        		- Keep answerText unchanged
+
+	        		If uncertain:
+	        		- still choose best matching question from SolutionDto
+	        		- NEVER leave questionId null
+
+	        		────────────────────────────────────
+	        		OUTPUT FORMAT
+	        		────────────────────────────────────
+
+	        		Return a valid StudentPaperDto JSON:
+	        		- subject unchanged
+	        		- studentId unchanged
+	        		- questions fully aligned:
+	        		    - questionId populated
+	        		    - questionText populated from SolutionDto
+	        		    - answerText unchanged
+
+	        		No commentary.
+	        		No markdown.
+	        		""");	        
+	        
+	        // 3. Student input
+	        UserMessage studentMessage = UserMessage.builder()
+	                .text("""
+	                    Student Paper (transcribed JSON):
+	                    """ + studentJson)
+	                .build();
+
+	        // 4. Solution input (GROUND TRUTH)
+	        UserMessage solutionMessage = UserMessage.builder()
+	                .text("""
+	                    Official Solution Structure (JSON):
+	                    """ + solutionJson)
+	                .build();
+
+	        // 5. Build prompt
+	        Prompt prompt = new Prompt(List.of(
+	                systemMessage,
+	                solutionMessage,
+	                studentMessage
+	        ));
+
+	        // 6. Call model
+	        ChatResponse response = chatModel.call(prompt);
+
+	        String raw = response.getResult().getOutput().getText();
+
+	        log.info("=== ALIGNMENT RESPONSE ===");
+	        log.info(raw);
+
+	        // 7. Parse aligned output
+	        StudentPaperDto aligned = objectMapper.readValue(raw, StudentPaperDto.class);
+
+	        return aligned;
+
+	    } catch (Exception e) {
+	        throw new RuntimeException("Failed to align student paper to solution structure", e);
+	    }
+	}	
+	
+	
+	public QuestionEvaluationDto evaluateQuestion(List<MultipartFile> paperImages, List<MultipartFile> rubricImages,
 			List<MultipartFile> solutionImages) throws Exception {
 
 		byte[] paperPdfBytes = pdfAssemblyService.imagesToPdf(paperImages);
@@ -81,11 +202,11 @@ public class ExamEvaluationService {
 						JSON schema:
 						{
 						  "studentName": string | null,
-						  "questionNumber": integer | null,
+						  "questionId": "string"
 						  "questionText": string,
 						  "maxMarks": integer,
 						  "marksAwarded": integer,
-						  "studentSolutionTranscription": string,
+						  "studentAnswerTranscription": string,
 
 						  "officialSolutionKeyPoints": [
 						    string
@@ -183,7 +304,7 @@ public class ExamEvaluationService {
 
 		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-		ExamEvaluationDto dto = objectMapper.readValue(raw, ExamEvaluationDto.class);
+		QuestionEvaluationDto dto = objectMapper.readValue(raw, QuestionEvaluationDto.class);
 
 		validate(dto);
 
@@ -447,59 +568,125 @@ public class ExamEvaluationService {
 				TASK:
 				Extract and structure the student's answers from the attached PDF into the provided JSON schema.
 
-				STRICT RULES:
-				- Only extract what is explicitly written in the student paper.
-				- Do NOT evaluate correctness.
-				- Do NOT infer missing answers or expand incomplete sentences.
-				- Do NOT correct grammar, spelling, or structure.
-				- Preserve student wording as closely as possible.
+				This is strictly a transcription and document-structuring task.
+				Do NOT evaluate answers.
+				Do NOT mark answers.
+				Do NOT align answers with marking schemes or official solutions.
 
-				- Extract question answers in order as they appear in the paper.
-				- If question identifiers are not explicitly clear, infer them using:
-				  (1) ordering in the document
-				  (2) visible markers such as "a", "b", "Q1", "(a)", numbering patterns
-				
-				- Assign questionId using best available match to expected exam structure.
-				- If exact label is unknown, still assign a stable identifier based on position:
-				  e.g. "Q1", "Q2", "Q3" or "1", "2", "3"
-				
-				- Do NOT leave questionId null if any structure can be inferred.
+				────────────────────────────────────────
+				CORE RULES
+				────────────────────────────────────────
 
-				- If student identity is present anywhere in header, footer, or first page text (e.g. Name, Candidate Name, Roll No), extract it into studentId.
-				  If multiple candidates exist, pick the most explicit identifier.
+				- Only extract content explicitly visible in the student paper.
+				- Preserve student wording exactly as written.
+				- Do NOT correct spelling, grammar, punctuation, or sentence structure.
+				- Do NOT complete unfinished sentences.
+				- Do NOT infer missing answers.
 
-				If text is unclear or unreadable:
-				- set value to null or best partial extraction possible
+				────────────────────────────────────────
+				ANSWER STRUCTURING RULES
+				────────────────────────────────────────
 
-				Ignore:
-				- formatting issues
-				- handwriting noise / OCR artifacts
-				- layout structure
+				- Preserve the exact order of answers as they appear in the document.
+				- Split answers into separate blocks only when clear visual, numbering, or structural separation exists.
+				- Assume the student answers questions sequentially unless strong evidence suggests otherwise.
+				- Maintain local continuity between neighboring answer blocks.
 
-				The goal is structural transcription, not reasoning.
+				- If a new answer block does not contain a visible printed question,
+				  inherit the most recently detected printed questionText.
 
-				OUTPUT:
-				Must strictly follow JSON schema.
-				No extra fields.
-				No commentary.
+				- Short unlabeled answer blocks usually belong to the current or next logical question/subquestion.
 
-				JSON Schema:
+				- Only treat consecutive blocks as the same answer if they clearly continue the same topic.
+
+				- Detect likely transitions between:
+				  - question → subquestion
+				  - subquestion → next subquestion
+				  - answer continuation → new answer
+
+				────────────────────────────────────────
+				QUESTION LABEL RULES
+				────────────────────────────────────────
+
+				- questionId MUST always be null.
+				- Never infer or generate questionId values.
+
+				- If explicit labels exist
+				  (e.g. "Q1", "1(a)", "(b)", "Question 3"),
+				  extract them exactly into rawQuestionLabel.
+
+				- Preserve rawQuestionLabel exactly as written.
+				- If no visible label exists, set rawQuestionLabel to null.
+
+				────────────────────────────────────────
+				QUESTION TEXT RULES
+				────────────────────────────────────────
+
+				- If a printed exam question is visible, extract it into questionText.
+				- Preserve questionText exactly as written.
+				- Do NOT summarize or rewrite questionText.
+
+				- If no printed question is visible for a block,
+				  inherit the previous visible questionText when appropriate.
+
+				- If no reliable questionText exists, set questionText to null.
+
+				────────────────────────────────────────
+				STUDENT METADATA RULES
+				────────────────────────────────────────
+
+				- Extract subject, classAndSection, date, and studentId only if explicitly visible.
+				- If multiple student identifiers exist, use the clearest one.
+
+				────────────────────────────────────────
+				UNCERTAINTY RULES
+				────────────────────────────────────────
+
+				- If text is unreadable or ambiguous,
+				  return null or partial transcription when reasonably confident.
+
+				────────────────────────────────────────
+				IGNORE
+				────────────────────────────────────────
+
+				- Marking logic
+				- Correctness
+				- Rubrics
+				- Model answers
+				- Semantic matching to official solutions
+
+				────────────────────────────────────────
+				OUTPUT RULES
+				────────────────────────────────────────
+
+				- Return ONLY valid JSON matching the schema.
+				- No markdown.
+				- No explanations.
+				- No commentary.
+
+				────────────────────────────────────────
+				OUTPUT SCHEMA
+				────────────────────────────────────────
 
 				{
 				  "subject": "string",
+				  "classAndSection": "string",
+				  "date": "string",
 				  "studentId": "string",
 
 				  "questions": [
 				    {
-				      "questionId": "string",
+				      "questionId": null,
+				      "rawQuestionLabel": "string",
+				      "questionText": "string",
 				      "answerText": "string"
 				    }
 				  ]
 				}
 				""");
-
+		
 		UserMessage studentMessage = UserMessage.builder()
-				.text("This is a student's exam paper. Transcribe answers exactly.")
+				.text("This is a student's answer paper.")
 				.media(new Media(
 						MimeTypeUtils.parseMimeType("application/pdf"),
 						studentPaperPdf))
@@ -527,7 +714,7 @@ public class ExamEvaluationService {
 		return dto;
 	}
 
-	private void validate(ExamEvaluationDto result) {
+	private void validate(QuestionEvaluationDto result) {
 		if (result == null) {
 			throw new IllegalStateException("AI returned null response");
 		}

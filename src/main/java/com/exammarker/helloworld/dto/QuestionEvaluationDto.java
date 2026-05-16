@@ -6,16 +6,16 @@ import com.exammarker.helloworld.dto.rubric.RubricReferenceDto;
 
 
 // raw output layer
-public record ExamEvaluationDto(
+public record QuestionEvaluationDto(
 
 	String studentName,	
-    Integer questionNumber,
+	String questionId,
     String questionText,
 
     Integer maxMarks,
     Integer marksAwarded,
 
-    String studentSolutionTranscription,
+    String studentAnswerTranscription,
 
     List<String> officialSolutionKeyPoints,
 

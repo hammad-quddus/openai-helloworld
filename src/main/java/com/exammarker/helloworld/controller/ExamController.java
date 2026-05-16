@@ -7,12 +7,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.exammarker.helloworld.dto.ExamEvaluationDto;
+import com.exammarker.helloworld.dto.QuestionEvaluationDto;
+import com.exammarker.helloworld.dto.align.AlignRequest;
 import com.exammarker.helloworld.dto.rubric.RubricDto;
 import com.exammarker.helloworld.dto.solution.SolutionDto;
 import com.exammarker.helloworld.dto.studentpaper.StudentPaperDto;
@@ -38,6 +40,19 @@ public class ExamController {
         this.pdfAssemblyservice = pdfAssemblyservice;
     }
 
+    @PostMapping("/debug/align")
+    public StudentPaperDto debugAlign(@RequestBody AlignRequest request) {
+    	log.info("endpoint: debug/align...");
+
+        return evaluationService.alignStudentPaperToQuestions(        		
+        		request.studentPaper(),
+                request.solution()
+        );
+    }
+    
+    
+    
+    
     @PostMapping(value = "/transcribestudentpaper", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public StudentPaperDto transcribeStudentpaper(
 
@@ -80,7 +95,7 @@ public class ExamController {
     }
     
     @PostMapping(value = "/evaluate", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ExamEvaluationDto evaluate(
+    public QuestionEvaluationDto evaluate(
             @RequestPart("paperImages") List<MultipartFile> paperImages,
             @RequestPart("rubricImages") List<MultipartFile> rubricImages,
             @RequestPart("solutionImages") List<MultipartFile> solutionImages
@@ -92,6 +107,6 @@ public class ExamController {
     	log.info("total solutionImages: " + solutionImages.size());
     	
     	
-    	return evaluationService.evaluate(paperImages, rubricImages, solutionImages);
+    	return evaluationService.evaluateQuestion(paperImages, rubricImages, solutionImages);
    }
 }
