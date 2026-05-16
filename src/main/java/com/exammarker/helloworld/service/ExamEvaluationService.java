@@ -573,15 +573,6 @@ public class ExamEvaluationService {
 
 				Extract and structure a student's answer paper from a PDF into JSON.
 
-				This is STRICTLY transcription.
-
-				- Do NOT evaluate answers
-				- Do NOT interpret meaning
-				- Do NOT infer missing content
-				- Do NOT match to marking schemes
-				- Do NOT rewrite or correct text
-
-				Only describe what is visually present.
 
 				────────────────────────────────────────
 				CORE STRUCTURE RULE
@@ -610,35 +601,22 @@ public class ExamEvaluationService {
 				────────────────────────────────────────
 
 				- subQuestionLabel NEVER creates a new section
-				- subQuestionLabel must NOT override questionText
-				- questionText always comes from the visible printed question header
-				- If no printed questionText exists → set null
 
 				────────────────────────────────────────
-				LABEL RULES
+				QUESTION TEXT RESOLUTION RULE (KEYED LOOKUP)
 				────────────────────────────────────────
+				
+				- Use (rawQuestionLabel + subQuestionLabel) as a lookup key to determine questionText from printed sections (Questions).
 
-				- Only extract labels that are physically visible
-				- Do NOT infer labels
-				- Do NOT reuse previous labels across blocks
-				- If not visible → set null
-
+  												
 				────────────────────────────────────────
 				GROUPING RULE
 				────────────────────────────────────────
 
 				- Maintain document order strictly
 				- Handwritten content may span multiple blocks
-				- Group only by layout proximity (NOT meaning)
 
-				────────────────────────────────────────
-				QUESTION TEXT RULE
-				────────────────────────────────────────
-
-				- Extract questionText only if printed question is visible
-				- Never reconstruct or infer questionText
-				- May repeat questionText only when clearly continuing same printed section
-
+								
 				────────────────────────────────────────
 				OUTPUT RULES
 				────────────────────────────────────────
@@ -667,7 +645,7 @@ public class ExamEvaluationService {
 
 				""");		
 		UserMessage studentMessage = UserMessage.builder()
-				.text("This is a student's answer paper.")
+				.text("This is a student's answer paper. Handwritten parts are the answers and printed parts are questions.")
 				.media(new Media(
 						MimeTypeUtils.parseMimeType("application/pdf"),
 						studentPaperPdf))
