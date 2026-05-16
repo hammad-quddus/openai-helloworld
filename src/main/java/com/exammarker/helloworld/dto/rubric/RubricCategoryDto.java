@@ -5,7 +5,7 @@ import java.util.List;
 public record RubricCategoryDto(
         String rubricCategoryId,
         String assessmentObjective,
-        Integer maxMarks,
-        String appliesTo,
-        List<RubricLevelDto> levelScale
+        String description,
+        String scoringRule,
+        List<RubricLevelDto> levels
 ) {}

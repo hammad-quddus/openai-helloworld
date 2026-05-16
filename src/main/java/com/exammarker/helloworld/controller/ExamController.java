@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.exammarker.helloworld.dto.ExamEvaluationDto;
-import com.exammarker.helloworld.dto.rubric.RubrickDto;
+import com.exammarker.helloworld.dto.rubric.RubricDto;
 import com.exammarker.helloworld.dto.solution.SolutionDto;
 import com.exammarker.helloworld.dto.studentpaper.StudentPaperDto;
 import com.exammarker.helloworld.service.ExamEvaluationService;
@@ -67,7 +67,7 @@ public class ExamController {
    
     
     @PostMapping(value = "/transcriberubric", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public RubrickDto transcribeRubric(
+    public RubricDto transcribeRubric(
 
     		@RequestPart(value = "rubric", required = true) List<MultipartFile> rubricImages
 
@@ -75,7 +75,7 @@ public class ExamController {
 
     	log.info("endpoint: transcriberubric...");
  
-    	return evaluationService.transcribeRubrick(rubricImages);
+    	return evaluationService.transcribeRubric(rubricImages);
 
     }
     

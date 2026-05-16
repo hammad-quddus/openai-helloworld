@@ -17,12 +17,11 @@ import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.exammarker.helloworld.dto.ExamEvaluationDto;
-import com.exammarker.helloworld.dto.rubric.RubrickDto;
+import com.exammarker.helloworld.dto.rubric.RubricDto;
 import com.exammarker.helloworld.dto.solution.SolutionDto;
 import com.exammarker.helloworld.dto.studentpaper.StudentPaperDto;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 
 @Service
 public class ExamEvaluationService {
@@ -193,16 +192,16 @@ public class ExamEvaluationService {
 
 	////////
 
-	public RubrickDto transcribeRubrick(List<MultipartFile> rubricImages) throws Exception {
+	public RubricDto transcribeRubric(List<MultipartFile> rubricImages) throws Exception {
 
 		byte[] rubricPdfBytes = pdfAssemblyService.imagesToPdf(rubricImages);
 		Resource rubricPdf = new ByteArrayResource(rubricPdfBytes);
 
-		return transcribeRubrick(rubricPdf);
+		return transcribeRubric(rubricPdf);
 
 	}
 
-	public RubrickDto transcribeRubrick(Resource rubricPdf) throws Exception {
+	public RubricDto transcribeRubric(Resource rubricPdf) throws Exception {
 
 		SystemMessage systemMessage = new SystemMessage("""
 				You are a rubric transcription engine.
@@ -220,6 +219,23 @@ public class ExamEvaluationService {
 				- Preserve assessment objective groupings if present (e.g. AO1, AO2).
 				- Do not convert rubric categories into individual exam questions.
 
+
+				QUESTION MAPPING RULES:
+				- Each question must be represented individually.
+				- Do NOT group questions into ranges or sets.
+				- questionId MUST refer to exactly ONE question.
+				- questionId MUST NOT contain ranges, intervals, or multiple values (e.g., "Q2-5a" is invalid).
+				- Use atomic identifiers only (e.g., "Q1a", "Q2b").
+				
+				- If a rubric category applies to multiple questions, repeat the mapping entry for each questionId.
+				- Do NOT compress or merge question mappings.
+				
+				IMPORTANT:
+				- Do NOT infer question grouping, numbering patterns, or implied ranges from layout or sequence.
+				- Treat each visually distinct question boundary as a separate entity.
+				- If uncertain, prefer over-segmentation (create more question entries rather than fewer).
+				- If a question boundary is unclear, still create a separate entry rather than merging.																								
+
 				If information is unclear or unreadable:
 				- set field to null
 
@@ -229,43 +245,60 @@ public class ExamEvaluationService {
 				- repeated text
 				- layout inconsistencies
 
+
 				OUTPUT:
 				Must strictly follow JSON schema.
 				No extra fields.
 				No commentary.
-
+				
 				JSON Schema:
-
+				
 				{
 				  "rubricId": "string",
 				  "subject": "string",
-
-				  "categories": [
+				
+				  "rubricCategories": [
 				    {
 				      "rubricCategoryId": "string",
 				      "assessmentObjective": "string",
-				      "appliesTo": "string",
-				      "maxMarks": 0,
-
-				      "levelScale": [
+				      "description": "string",
+				      "scoringRule": "best-fit",
+				
+				      "levels": [
 				        {
+				          "levelId": "string",
 				          "levelNumber": 0,
-				          "label": "string",
+				
 				          "markRange": {
 				            "min": 0,
 				            "max": 0
 				          },
+				
 				          "descriptor": "string",
-				          "characteristics": ["string"],
-				          "evidenceKeywords": ["string"]
+				
+				          "characteristics": [
+				            "string"
+				          ],
+				
+				          "evidenceKeywords": [
+				            "string"
+				          ]
 				        }
 				      ]
+				    }
+				  ],
+				
+				  "questionMappings": [
+				    {
+				      "questionId": "string",
+				      "rubricCategoryId": "string",
+				      "maxMarks": 0
 				    }
 				  ]
 				}
 				""");
 		
-		UserMessage rubricMessage = UserMessage.builder().text("This is the grading rubric.. pls..")
+		UserMessage rubricMessage = UserMessage.builder().text("This is the grading rubric.")
 				.media(new Media(MimeTypeUtils.parseMimeType("application/pdf"), rubricPdf)).build();
 
 		Prompt prompt = new Prompt(List.of(systemMessage, rubricMessage));
@@ -286,7 +319,7 @@ public class ExamEvaluationService {
 
 //		objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
 
-		RubrickDto dto = objectMapper.readValue(raw, RubrickDto.class);
+		RubricDto dto = objectMapper.readValue(raw, RubricDto.class);
 
 		return dto;
 	}
