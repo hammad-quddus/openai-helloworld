@@ -562,107 +562,88 @@ public class ExamEvaluationService {
 	
 	public StudentPaperDto transcribeStudentPaper(Resource studentPaperPdf) throws Exception {
 
+
 		SystemMessage systemMessage = new SystemMessage("""
-				You are a student exam paper transcription engine.
 
-				TASK:
-				Extract and structure the student's answers from the attached PDF into the provided JSON schema.
-
-				This is strictly a transcription and document-structuring task.
-				Do NOT evaluate answers.
-				Do NOT mark answers.
-				Do NOT align answers with marking schemes or official solutions.
+				YOU ARE A STUDENT EXAM PAPER TRANSCRIPTION ENGINE.
 
 				────────────────────────────────────────
-				CORE RULES
+				TASK
 				────────────────────────────────────────
 
-				- Only extract content explicitly visible in the student paper.
-				- Preserve student wording exactly as written.
-				- Do NOT correct spelling, grammar, punctuation, or sentence structure.
-				- Do NOT complete unfinished sentences.
-				- Do NOT infer missing answers.
+				Extract and structure a student's answer paper from a PDF into JSON.
+
+				This is STRICTLY transcription.
+
+				- Do NOT evaluate answers
+				- Do NOT interpret meaning
+				- Do NOT infer missing content
+				- Do NOT match to marking schemes
+				- Do NOT rewrite or correct text
+
+				Only describe what is visually present.
 
 				────────────────────────────────────────
-				ANSWER STRUCTURING RULES
+				CORE STRUCTURE RULE
 				────────────────────────────────────────
 
-				- Preserve the exact order of answers as they appear in the document.
-				- Split answers into separate blocks only when clear visual, numbering, or structural separation exists.
-				- Assume the student answers questions sequentially unless strong evidence suggests otherwise.
-				- Maintain local continuity between neighboring answer blocks.
+				- Printed text = question prompts / headers
+				- Handwritten text below printed text = student answers
+				- Preserve strict top-to-bottom order
 
-				- If a new answer block does not contain a visible printed question,
-				  inherit the most recently detected printed questionText.
-
-				- Short unlabeled answer blocks usually belong to the current or next logical question/subquestion.
-
-				- Only treat consecutive blocks as the same answer if they clearly continue the same topic.
-
-				- Detect likely transitions between:
-				  - question → subquestion
-				  - subquestion → next subquestion
-				  - answer continuation → new answer
+				Each answer belongs to the nearest preceding printed question.
 
 				────────────────────────────────────────
-				QUESTION LABEL RULES
+				SECTIONING RULE
 				────────────────────────────────────────
 
-				- questionId MUST always be null.
-				- Never infer or generate questionId values.
+				- rawQuestionLabel = main question number (e.g. "1.", "2.")
+				- subQuestionLabel = subparts (e.g. "(a)", "(b)")
 
-				- If explicit labels exist
-				  (e.g. "Q1", "1(a)", "(b)", "Question 3"),
-				  extract them exactly into rawQuestionLabel.
+				- A rawQuestionLabel starts a new section
+				- All following content belongs to that section until a new rawQuestionLabel appears
 
-				- Preserve rawQuestionLabel exactly as written.
-				- If no visible label exists, set rawQuestionLabel to null.
+				- subQuestionLabel always belongs to the current rawQuestionLabel section
 
 				────────────────────────────────────────
-				QUESTION TEXT RULES
+				SUBQUESTION RULE
 				────────────────────────────────────────
 
-				- If a printed exam question is visible, extract it into questionText.
-				- Preserve questionText exactly as written.
-				- Do NOT summarize or rewrite questionText.
-
-				- If no printed question is visible for a block,
-				  inherit the previous visible questionText when appropriate.
-
-				- If no reliable questionText exists, set questionText to null.
+				- subQuestionLabel NEVER creates a new section
+				- subQuestionLabel must NOT override questionText
+				- questionText always comes from the visible printed question header
+				- If no printed questionText exists → set null
 
 				────────────────────────────────────────
-				STUDENT METADATA RULES
+				LABEL RULES
 				────────────────────────────────────────
 
-				- Extract subject, classAndSection, date, and studentId only if explicitly visible.
-				- If multiple student identifiers exist, use the clearest one.
+				- Only extract labels that are physically visible
+				- Do NOT infer labels
+				- Do NOT reuse previous labels across blocks
+				- If not visible → set null
 
 				────────────────────────────────────────
-				UNCERTAINTY RULES
+				GROUPING RULE
 				────────────────────────────────────────
 
-				- If text is unreadable or ambiguous,
-				  return null or partial transcription when reasonably confident.
+				- Maintain document order strictly
+				- Handwritten content may span multiple blocks
+				- Group only by layout proximity (NOT meaning)
 
 				────────────────────────────────────────
-				IGNORE
+				QUESTION TEXT RULE
 				────────────────────────────────────────
 
-				- Marking logic
-				- Correctness
-				- Rubrics
-				- Model answers
-				- Semantic matching to official solutions
+				- Extract questionText only if printed question is visible
+				- Never reconstruct or infer questionText
+				- May repeat questionText only when clearly continuing same printed section
 
 				────────────────────────────────────────
 				OUTPUT RULES
 				────────────────────────────────────────
 
-				- Return ONLY valid JSON matching the schema.
-				- No markdown.
-				- No explanations.
-				- No commentary.
+				Return ONLY valid JSON. No markdown. No explanation.
 
 				────────────────────────────────────────
 				OUTPUT SCHEMA
@@ -673,18 +654,18 @@ public class ExamEvaluationService {
 				  "classAndSection": "string",
 				  "date": "string",
 				  "studentId": "string",
-
 				  "questions": [
 				    {
 				      "questionId": null,
 				      "rawQuestionLabel": "string",
+				      "subQuestionLabel": "string",
 				      "questionText": "string",
 				      "answerText": "string"
 				    }
 				  ]
 				}
-				""");
-		
+
+				""");		
 		UserMessage studentMessage = UserMessage.builder()
 				.text("This is a student's answer paper.")
 				.media(new Media(
